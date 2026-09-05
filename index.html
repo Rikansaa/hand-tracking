@@ -142,7 +142,7 @@ body::before {
         <div id="handSide" class="text-2xl font-semibold text-white">-</div>
       </div>
       <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
-        <div class="text-xs text-gray-400 uppercase mb-1">Efek Jari</div>
+        <div class="text-xs text-gray-400 uppercase mb-1">Efek Kaca Cair</div>
         <div id="effectValue" class="text-2xl font-semibold text-gray-500">Menunggu</div>
       </div>
     </div>
@@ -190,19 +190,19 @@ body::before {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div>
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-6">Cara Kerja</h2>
-        <p class="text-gray-400 mb-8 leading-relaxed">Setiap frame dari kamera dianalisis untuk menemukan posisi kedua tangan. Sistem hanya mengikuti empat titik jari yaitu ujung jempol dan ujung telunjuk pada masing-masing tangan, lalu menyambungkan keempatnya menjadi satu bentuk yang diisi gambar kamera berwarna dinamis sehingga bentuknya mengikuti gerakan jari secara langsung.</p>
+        <p class="text-gray-400 mb-8 leading-relaxed">Sistem mendeteksi jari mana saja yang sedang berdiri tegak di tiap tangan. Hanya jari dengan jenis yang sama dan sama-sama berdiri di kedua tangan yang disambungkan, misalnya kalau yang berdiri cuma jempol dan telunjuk di kedua tangan, maka bidang kaca cairnya hanya mengikuti jempol dan telunjuk itu saja.</p>
         <div class="grid grid-cols-1 gap-6">
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">1</span></div>
-            <div><h4 class="font-bold text-white">Ambil Empat Titik</h4><p class="text-sm text-gray-500">Ujung jempol dan ujung telunjuk dari tangan kiri dan kanan dihitung setiap frame.</p></div>
+            <div><h4 class="font-bold text-white">Deteksi Jari Berdiri</h4><p class="text-sm text-gray-500">Tiap tangan dicek jari mana yang lurus berdiri dan mana yang ditekuk.</p></div>
           </div>
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">2</span></div>
-            <div><h4 class="font-bold text-white">Sambungkan Jadi Bentuk</h4><p class="text-sm text-gray-500">Jempol dan telunjuk tangan kiri disambung ke telunjuk dan jempol tangan kanan membentuk satu bidang.</p></div>
+            <div><h4 class="font-bold text-white">Cocokkan Jenis Jari</h4><p class="text-sm text-gray-500">Hanya jari dengan jenis sama yang berdiri di kedua tangan sekaligus yang dipakai, sisanya diabaikan.</p></div>
           </div>
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">3</span></div>
-            <div><h4 class="font-bold text-white">Warnai Ulang</h4><p class="text-sm text-gray-500">Area dalam bidang tersebut diisi ulang dengan gambar kamera yang diberi efek warna bergerak.</p></div>
+            <div><h4 class="font-bold text-white">Beri Efek Sesuai Jumlah Bidang</h4><p class="text-sm text-gray-500">Kalau cuma satu bidang, tampilannya kaca cair yang halus. Kalau bidangnya lebih dari satu, tampilannya berubah jadi gaya poster berbintik dengan warna pecah-pecah seperti kristal.</p></div>
           </div>
         </div>
       </div>
@@ -222,14 +222,17 @@ body::before {
           <div class="bg-[#1a1a1a] min-h-64 relative overflow-hidden">
             <div class="p-4">
               <div class="overflow-x-auto">
-<pre class="font-mono text-sm text-gray-300 whitespace-pre"><span class="text-purple-400">const</span> thumbA = tip(handA, <span class="text-yellow-300">4</span>);
-<span class="text-purple-400">const</span> indexA = tip(handA, <span class="text-yellow-300">8</span>);
-<span class="text-purple-400">const</span> indexB = tip(handB, <span class="text-yellow-300">8</span>);
-<span class="text-purple-400">const</span> thumbB = tip(handB, <span class="text-yellow-300">4</span>);
+<pre class="font-mono text-sm text-gray-300 whitespace-pre"><span class="text-purple-400">const</span> extA = extendedFingerTips(handA);
+<span class="text-purple-400">const</span> extB = extendedFingerTips(handB);
+<span class="text-purple-400">const</span> common = extA.filter(i => extB.includes(i));
+<span class="text-purple-400">const</span> segments = common.length - <span class="text-yellow-300">1</span>;
 
-ctx.clip(quad(thumbA, indexA, indexB, thumbB));
-ctx.filter = <span class="text-green-400">`hue-rotate(${hue}deg) saturate(4)`</span>;
-ctx.drawImage(videoFrame, <span class="text-yellow-300">0</span>, <span class="text-yellow-300">0</span>);</pre>
+<span class="text-purple-400">for</span> (<span class="text-purple-400">let</span> i = <span class="text-yellow-300">0</span>; i &lt; segments; i++) {
+  <span class="text-purple-400">const</span> quad = [tip(handA, common[i]), tip(handA, common[i+<span class="text-yellow-300">1</span>]), tip(handB, common[i+<span class="text-yellow-300">1</span>]), tip(handB, common[i])];
+  <span class="text-purple-400">const</span> hue = i * (<span class="text-yellow-300">360</span> / segments);
+  <span class="text-purple-400">if</span> (segments === <span class="text-yellow-300">1</span>) drawLiquidGlassQuad(ctx, videoFrame, quad, hue);
+  <span class="text-purple-400">else</span> drawPosterDitherQuad(ctx, videoFrame, quad, hue);
+}</pre>
               </div>
             </div>
           </div>
@@ -328,54 +331,159 @@ const supportsCanvasFilter = (() => {
   return testCanvas.filter === 'blur(1px)';
 })();
 
-function drawHandBeamEffect(context, image, points, time, width, height) {
+const dotPatternCanvas = document.createElement('canvas');
+dotPatternCanvas.width = 6;
+dotPatternCanvas.height = 6;
+const dotPatternCtx = dotPatternCanvas.getContext('2d');
+dotPatternCtx.fillStyle = 'rgba(255,255,255,0.45)';
+dotPatternCtx.beginPath();
+dotPatternCtx.arc(1.5, 1.5, 1, 0, Math.PI * 2);
+dotPatternCtx.fill();
+dotPatternCtx.beginPath();
+dotPatternCtx.arc(4.5, 4.5, 1, 0, Math.PI * 2);
+dotPatternCtx.fill();
+
+function drawLiquidGlassQuad(context, image, points, time, width, height, hue) {
   context.save();
   context.beginPath();
   context.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    context.lineTo(points[i].x, points[i].y);
-  }
+  context.lineTo(points[1].x, points[1].y);
+  context.lineTo(points[2].x, points[2].y);
+  context.lineTo(points[3].x, points[3].y);
   context.closePath();
   context.clip();
 
-  const bbox = boundingBoxOfPoints(points);
-  const bands = 26;
-  const bandHeight = Math.max(bbox.h / bands, 1);
-
-  for (let i = 0; i < bands; i++) {
-    const bandY = bbox.y + i * bandHeight;
-    context.save();
-    context.beginPath();
-    context.rect(bbox.x, bandY, bbox.w, bandHeight + 1);
-    context.clip();
-    const hue = (time / 12 + i * 22) % 360;
-    if (supportsCanvasFilter) {
-      context.filter = `saturate(4.5) contrast(1.6) brightness(1.2) hue-rotate(${hue}deg)`;
-      context.drawImage(image, 0, 0, width, height);
-    } else {
-      context.drawImage(image, 0, 0, width, height);
-      context.globalCompositeOperation = 'hue';
-      context.fillStyle = `hsl(${hue}, 100%, 50%)`;
-      context.fillRect(bbox.x, bandY, bbox.w, bandHeight + 1);
-      context.globalCompositeOperation = 'source-over';
-    }
-    context.restore();
+  if (supportsCanvasFilter) {
+    context.filter = 'blur(7px) saturate(1.5) brightness(1.08)';
+    context.drawImage(image, 0, 0, width, height);
+    context.filter = 'none';
+  } else {
+    context.drawImage(image, 0, 0, width, height);
   }
 
-  context.filter = 'none';
+  const bbox = boundingBoxOfPoints(points);
+
+  const tint = context.createLinearGradient(bbox.x, bbox.y, bbox.x + bbox.w, bbox.y + bbox.h);
+  tint.addColorStop(0, `hsla(${hue}, 90%, 75%, 0.38)`);
+  tint.addColorStop(0.5, `hsla(${hue}, 85%, 65%, 0.20)`);
+  tint.addColorStop(1, `hsla(${hue}, 90%, 80%, 0.12)`);
+  context.fillStyle = tint;
+  context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+
+  const glarePos = (time / 1100) % 2;
+  const glareCenter = bbox.x - bbox.w * 0.4 + bbox.w * 1.4 * (glarePos > 1 ? 2 - glarePos : glarePos);
+  const glareWidth = Math.max(bbox.w * 0.35, 30);
+  const glare = context.createLinearGradient(glareCenter - glareWidth, bbox.y, glareCenter + glareWidth, bbox.y + bbox.h);
+  glare.addColorStop(0, 'rgba(255,255,255,0)');
+  glare.addColorStop(0.5, 'rgba(255,255,255,0.6)');
+  glare.addColorStop(1, 'rgba(255,255,255,0)');
+  context.globalCompositeOperation = 'screen';
+  context.fillStyle = glare;
+  context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+  context.globalCompositeOperation = 'source-over';
+
   context.restore();
 
   context.save();
   context.beginPath();
   context.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    context.lineTo(points[i].x, points[i].y);
-  }
+  context.lineTo(points[1].x, points[1].y);
+  context.lineTo(points[2].x, points[2].y);
+  context.lineTo(points[3].x, points[3].y);
   context.closePath();
   context.lineWidth = 2;
-  context.strokeStyle = 'rgba(255,255,255,0.55)';
+  context.strokeStyle = `hsla(${hue}, 95%, 80%, 0.9)`;
+  context.shadowColor = `hsla(${hue}, 95%, 70%, 0.8)`;
+  context.shadowBlur = 12;
   context.stroke();
+  context.shadowBlur = 0;
   context.restore();
+}
+
+function drawPosterDitherQuad(context, image, points, time, width, height, hue) {
+  context.save();
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  context.lineTo(points[1].x, points[1].y);
+  context.lineTo(points[2].x, points[2].y);
+  context.lineTo(points[3].x, points[3].y);
+  context.closePath();
+  context.clip();
+
+  if (supportsCanvasFilter) {
+    context.filter = `contrast(2.6) saturate(3.4) brightness(1.15) hue-rotate(${hue}deg)`;
+    context.drawImage(image, 0, 0, width, height);
+    context.filter = 'none';
+  } else {
+    context.drawImage(image, 0, 0, width, height);
+  }
+
+  const bbox = boundingBoxOfPoints(points);
+
+  const pattern = context.createPattern(dotPatternCanvas, 'repeat');
+  context.globalCompositeOperation = 'overlay';
+  context.fillStyle = pattern;
+  context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+  context.globalCompositeOperation = 'source-over';
+
+  const flash = 0.5 + 0.5 * Math.sin(time / 150);
+  context.fillStyle = `hsla(${hue}, 100%, 70%, ${0.06 + flash * 0.05})`;
+  context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+
+  context.restore();
+
+  context.save();
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  context.lineTo(points[1].x, points[1].y);
+  context.lineTo(points[2].x, points[2].y);
+  context.lineTo(points[3].x, points[3].y);
+  context.closePath();
+  context.lineWidth = 5;
+  context.lineCap = 'round';
+  context.setLineDash([1, 6]);
+  context.strokeStyle = 'rgba(255,255,255,0.9)';
+  context.stroke();
+  context.setLineDash([]);
+  context.restore();
+}
+
+function tipPoint(hand, idx, width, height) {
+  return { x: hand[idx].x * width, y: hand[idx].y * height };
+}
+
+function extendedFingerTips(hand, width, height) {
+  const wrist = tipPoint(hand, 0, width, height);
+  const fingers = [
+    { tip: 4, pip: 2 },
+    { tip: 8, pip: 6 },
+    { tip: 12, pip: 10 },
+    { tip: 16, pip: 14 },
+    { tip: 20, pip: 18 }
+  ];
+  const result = [];
+  for (const f of fingers) {
+    const tip = tipPoint(hand, f.tip, width, height);
+    const pip = tipPoint(hand, f.pip, width, height);
+    if (distance(tip, wrist) > distance(pip, wrist)) {
+      result.push(f.tip);
+    }
+  }
+  return result;
+}
+
+function beamQuad(pA, pB, thickness) {
+  const dx = pB.x - pA.x;
+  const dy = pB.y - pA.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / len) * (thickness / 2);
+  const ny = (dx / len) * (thickness / 2);
+  return [
+    { x: pA.x + nx, y: pA.y + ny },
+    { x: pA.x - nx, y: pA.y - ny },
+    { x: pB.x - nx, y: pB.y - ny },
+    { x: pB.x + nx, y: pB.y + ny }
+  ];
 }
 
 hands.onResults((results) => {
@@ -404,15 +512,34 @@ hands.onResults((results) => {
         handB = tmp;
       }
 
-      const thumbA = { x: handA[4].x * canvasEl.width, y: handA[4].y * canvasEl.height };
-      const indexA = { x: handA[8].x * canvasEl.width, y: handA[8].y * canvasEl.height };
-      const indexB = { x: handB[8].x * canvasEl.width, y: handB[8].y * canvasEl.height };
-      const thumbB = { x: handB[4].x * canvasEl.width, y: handB[4].y * canvasEl.height };
+      const extA = extendedFingerTips(handA, canvasEl.width, canvasEl.height);
+      const extB = extendedFingerTips(handB, canvasEl.width, canvasEl.height);
+      const common = extA.filter(idx => extB.includes(idx));
 
-      const points = [thumbA, indexA, indexB, thumbB];
+      if (common.length >= 2) {
+        const tipsA = common.map(idx => tipPoint(handA, idx, canvasEl.width, canvasEl.height));
+        const tipsB = common.map(idx => tipPoint(handB, idx, canvasEl.width, canvasEl.height));
+        const segmentCount = common.length - 1;
 
-      drawHandBeamEffect(ctx, results.image, points, now, canvasEl.width, canvasEl.height);
-      joined = true;
+        for (let i = 0; i < segmentCount; i++) {
+          const quad = [tipsA[i], tipsA[i + 1], tipsB[i + 1], tipsB[i]];
+          const hue = (i * (360 / segmentCount) + now / 40) % 360;
+          if (segmentCount === 1) {
+            drawLiquidGlassQuad(ctx, results.image, quad, now, canvasEl.width, canvasEl.height, hue);
+          } else {
+            drawPosterDitherQuad(ctx, results.image, quad, now, canvasEl.width, canvasEl.height, hue);
+          }
+        }
+        joined = true;
+      } else if (common.length === 1) {
+        const pA = tipPoint(handA, common[0], canvasEl.width, canvasEl.height);
+        const pB = tipPoint(handB, common[0], canvasEl.width, canvasEl.height);
+        const thickness = canvasEl.width * 0.05;
+        const quad = beamQuad(pA, pB, thickness);
+        const hue = (now / 40) % 360;
+        drawLiquidGlassQuad(ctx, results.image, quad, now, canvasEl.width, canvasEl.height, hue);
+        joined = true;
+      }
     } catch (err) {
       joined = false;
     }
