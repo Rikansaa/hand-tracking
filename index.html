@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nexray Vision.</title>
+<title>Hand Tracking.</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -77,7 +77,7 @@ body::before {
   <div class="max-w-5xl mx-auto px-8 md:px-16 py-4 md:py-6 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <i class="bi bi-hand-index-thumb text-white text-xl"></i>
-      <span class="font-bold text-white text-xl" style="font-family: 'Space Grotesk', sans-serif;">Nexray Vision</span>
+      <span class="font-bold text-white text-xl" style="font-family: 'Space Grotesk', sans-serif;">Hand Tracking</span>
     </div>
     <div class="hidden md:flex items-center gap-8 text-sm text-gray-400">
       <a href="#stage" class="hover:text-white transition-colors">Tracker</a>
@@ -202,7 +202,7 @@ body::before {
           </div>
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">3</span></div>
-            <div><h4 class="font-bold text-white">Beri Efek Sesuai Jumlah Bidang</h4><p class="text-sm text-gray-500">Kalau cuma satu bidang, tampilannya kaca cair yang halus. Kalau bidangnya lebih dari satu, tampilannya berubah jadi gaya poster berbintik dengan warna pecah-pecah seperti kristal.</p></div>
+            <div><h4 class="font-bold text-white">Beri Efek Kaca Cair</h4><p class="text-sm text-gray-500">Setiap bidang di antara dua jari diburamkan dan diberi warna kaca yang berbeda-beda, jadi tiap segmen jari terlihat punya warnanya sendiri.</p></div>
           </div>
         </div>
       </div>
@@ -230,8 +230,7 @@ body::before {
 <span class="text-purple-400">for</span> (<span class="text-purple-400">let</span> i = <span class="text-yellow-300">0</span>; i &lt; segments; i++) {
   <span class="text-purple-400">const</span> quad = [tip(handA, common[i]), tip(handA, common[i+<span class="text-yellow-300">1</span>]), tip(handB, common[i+<span class="text-yellow-300">1</span>]), tip(handB, common[i])];
   <span class="text-purple-400">const</span> hue = i * (<span class="text-yellow-300">360</span> / segments);
-  <span class="text-purple-400">if</span> (segments === <span class="text-yellow-300">1</span>) drawLiquidGlassQuad(ctx, videoFrame, quad, hue);
-  <span class="text-purple-400">else</span> drawPosterDitherQuad(ctx, videoFrame, quad, hue);
+  drawLiquidGlassQuad(ctx, videoFrame, quad, hue);
 }</pre>
               </div>
             </div>
@@ -244,7 +243,7 @@ body::before {
 </main>
 
 <footer class="border-t border-[#2E2E2E] w-full">
-  <div class="max-w-5xl mx-auto px-8 md:px-16 py-8 text-center text-sm text-gray-500">Nexray Vision. Berjalan sepenuhnya di browser Anda.</div>
+  <div class="max-w-5xl mx-auto px-8 md:px-16 py-8 text-center text-sm text-gray-500">Hand Tracking. Berjalan sepenuhnya di browser Anda.</div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -274,9 +273,6 @@ let lastFrameTime = performance.now();
 let fps = 0;
 let startTime = null;
 let uptimeTimer = null;
-let lastTwoHands = null;
-let lastTwoHandsTime = 0;
-const HAND_MEMORY_MS = 350;
 
 const hands = new Hands({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -334,18 +330,6 @@ const supportsCanvasFilter = (() => {
   return testCanvas.filter === 'blur(1px)';
 })();
 
-const dotPatternCanvas = document.createElement('canvas');
-dotPatternCanvas.width = 6;
-dotPatternCanvas.height = 6;
-const dotPatternCtx = dotPatternCanvas.getContext('2d');
-dotPatternCtx.fillStyle = 'rgba(255,255,255,0.45)';
-dotPatternCtx.beginPath();
-dotPatternCtx.arc(1.5, 1.5, 1, 0, Math.PI * 2);
-dotPatternCtx.fill();
-dotPatternCtx.beginPath();
-dotPatternCtx.arc(4.5, 4.5, 1, 0, Math.PI * 2);
-dotPatternCtx.fill();
-
 function drawLiquidGlassQuad(context, image, points, time, width, height, hue) {
   context.save();
   context.beginPath();
@@ -386,9 +370,7 @@ function drawLiquidGlassQuad(context, image, points, time, width, height, hue) {
   context.globalCompositeOperation = 'source-over';
 
   context.restore();
-}
 
-function drawPosterDitherQuad(context, image, points, time, width, height, hue) {
   context.save();
   context.beginPath();
   context.moveTo(points[0].x, points[0].y);
@@ -396,28 +378,12 @@ function drawPosterDitherQuad(context, image, points, time, width, height, hue) 
   context.lineTo(points[2].x, points[2].y);
   context.lineTo(points[3].x, points[3].y);
   context.closePath();
-  context.clip();
-
-  if (supportsCanvasFilter) {
-    context.filter = `contrast(2.6) saturate(3.4) brightness(1.15) hue-rotate(${hue}deg)`;
-    context.drawImage(image, 0, 0, width, height);
-    context.filter = 'none';
-  } else {
-    context.drawImage(image, 0, 0, width, height);
-  }
-
-  const bbox = boundingBoxOfPoints(points);
-
-  const pattern = context.createPattern(dotPatternCanvas, 'repeat');
-  context.globalCompositeOperation = 'overlay';
-  context.fillStyle = pattern;
-  context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
-  context.globalCompositeOperation = 'source-over';
-
-  const flash = 0.5 + 0.5 * Math.sin(time / 150);
-  context.fillStyle = `hsla(${hue}, 100%, 70%, ${0.06 + flash * 0.05})`;
-  context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
-
+  context.lineWidth = 2;
+  context.strokeStyle = `hsla(${hue}, 95%, 80%, 0.9)`;
+  context.shadowColor = `hsla(${hue}, 95%, 70%, 0.8)`;
+  context.shadowBlur = 12;
+  context.stroke();
+  context.shadowBlur = 0;
   context.restore();
 }
 
@@ -475,26 +441,16 @@ hands.onResults((results) => {
   const handedness = results.multiHandedness || [];
 
   let joined = false;
-  let handA = null;
-  let handB = null;
-
   if (handList.length === 2) {
-    handA = handList[0];
-    handB = handList[1];
-    if (handA[0].x > handB[0].x) {
-      const tmp = handA;
-      handA = handB;
-      handB = tmp;
-    }
-    lastTwoHands = [handA, handB];
-    lastTwoHandsTime = now;
-  } else if (lastTwoHands && (now - lastTwoHandsTime) < HAND_MEMORY_MS) {
-    handA = lastTwoHands[0];
-    handB = lastTwoHands[1];
-  }
-
-  if (handA && handB) {
     try {
+      let handA = handList[0];
+      let handB = handList[1];
+      if (handA[0].x > handB[0].x) {
+        const tmp = handA;
+        handA = handB;
+        handB = tmp;
+      }
+
       const extA = extendedFingerTips(handA, canvasEl.width, canvasEl.height);
       const extB = extendedFingerTips(handB, canvasEl.width, canvasEl.height);
       const common = extA.filter(idx => extB.includes(idx));
@@ -507,11 +463,7 @@ hands.onResults((results) => {
         for (let i = 0; i < segmentCount; i++) {
           const quad = [tipsA[i], tipsA[i + 1], tipsB[i + 1], tipsB[i]];
           const hue = (i * (360 / segmentCount) + now / 40) % 360;
-          if (segmentCount === 1) {
-            drawLiquidGlassQuad(ctx, results.image, quad, now, canvasEl.width, canvasEl.height, hue);
-          } else {
-            drawPosterDitherQuad(ctx, results.image, quad, now, canvasEl.width, canvasEl.height, hue);
-          }
+          drawLiquidGlassQuad(ctx, results.image, quad, now, canvasEl.width, canvasEl.height, hue);
         }
         joined = true;
       } else if (common.length === 1) {
@@ -591,8 +543,6 @@ function stopTracking() {
     videoEl.srcObject = null;
   }
   ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-  lastTwoHands = null;
-  lastTwoHandsTime = 0;
 
   statusDot.classList.remove('live');
   statusText.textContent = 'Idle';
