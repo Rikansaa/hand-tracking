@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexray Vision.</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        mono: ['Ubuntu Mono', 'monospace'],
+        sans: ['Space Grotesk', 'system-ui', 'sans-serif']
+      }
+    }
+  }
+}
+</script>
+<style>
+::-webkit-scrollbar { display: none !important; }
+body {
+  position: relative;
+  background-color: #181818;
+  letter-spacing: 0.025em;
+}
+body::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  min-height: 100vh;
+  z-index: -1;
+  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid #2E2E2E;
+}
+.stage video, .stage canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 9999px;
+  background: #4b4b4b;
+}
+.pulse-dot.live {
+  background: #ffffff;
+  box-shadow: 0 0 0 0 rgba(255,255,255,0.6);
+  animation: pulse 1.6s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+</style>
+</head>
+<body class="bg-[#181818] text-gray-200 antialiased font-sans min-h-screen">
+
+<nav class="fixed top-0 left-0 right-0 z-50 bg-[#181818] border-b border-[#2E2E2E]">
+  <div class="max-w-5xl mx-auto px-8 md:px-16 py-4 md:py-6 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i class="bi bi-hand-index-thumb text-white text-xl"></i>
+      <span class="font-bold text-white text-xl" style="font-family: 'Space Grotesk', sans-serif;">Nexray Vision</span>
+    </div>
+    <div class="hidden md:flex items-center gap-8 text-sm text-gray-400">
+      <a href="#stage" class="hover:text-white transition-colors">Tracker</a>
+      <a href="#statistic" class="hover:text-white transition-colors">Statistic</a>
+      <a href="#landmarks" class="hover:text-white transition-colors">Landmarks</a>
+    </div>
+    <div class="flex items-center gap-2 px-3 py-1.5 border border-[#2E2E2E] bg-[#212121] rounded-full text-xs text-gray-400">
+      <span id="statusDot" class="pulse-dot"></span>
+      <span id="statusText">Idle</span>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-5xl mx-auto px-8 md:px-16 pt-28 pb-16">
+
+  <section class="text-center md:text-left mb-12">
+    <div class="inline-flex items-center gap-1 px-4 py-1.5 mb-6 text-sm font-semibold text-gray-400 border border-[#2E2E2E] bg-[#212121] rounded-full">
+      <i class="bi bi-cpu text-white text-[12px]"></i>
+      <span>Realtime Hand Landmark Detection</span>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">Hand Tracking in Your Browser</h1>
+    <p class="text-base text-gray-400 max-w-2xl leading-relaxed">Nyalakan kamera dan sistem akan melacak dua puluh satu titik pada setiap tangan secara langsung, tanpa server dan tanpa instalasi tambahan.</p>
+  </section>
+
+  <section id="stage" class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+    <div class="lg:col-span-2">
+      <div class="stage" id="stageBox">
+        <video id="inputVideo" playsinline autoplay muted></video>
+        <canvas id="outputCanvas"></canvas>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 mt-5">
+        <button id="startBtn" class="px-6 py-2 bg-white border border-[#383838] text-black font-bold text-sm rounded-lg transition-all flex items-center gap-2">
+          <i class="bi bi-camera-video"></i>
+          <span>Start Camera</span>
+        </button>
+        <button id="stopBtn" class="px-6 py-2 bg-[#212121] border border-[#383838] text-gray-400 font-bold text-sm rounded-lg transition-all flex items-center gap-2" disabled>
+          <i class="bi bi-stop-circle"></i>
+          <span>Stop</span>
+        </button>
+        <div class="flex items-center gap-2 px-4 py-2 bg-[#212121] border border-[#2E2E2E] rounded-lg text-xs text-gray-400">
+          <i class="bi bi-info-circle"></i>
+          <span>Model dimuat langsung dari CDN saat halaman dibuka</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
+        <div class="text-xs text-gray-400 uppercase mb-1">Tangan Terdeteksi</div>
+        <div id="handCount" class="text-2xl font-semibold text-white">0</div>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
+        <div class="text-xs text-gray-400 uppercase mb-1">Frame Per Second</div>
+        <div id="fpsValue" class="text-2xl font-semibold text-white">0</div>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
+        <div class="text-xs text-gray-400 uppercase mb-1">Gestur</div>
+        <div id="gestureValue" class="text-2xl font-semibold text-white">-</div>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
+        <div class="text-xs text-gray-400 uppercase mb-1">Sisi Tangan</div>
+        <div id="handSide" class="text-2xl font-semibold text-white">-</div>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
+        <div class="text-xs text-gray-400 uppercase mb-1">Efek Segitiga</div>
+        <div id="effectValue" class="text-2xl font-semibold text-gray-500">Menunggu</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="statistic" class="py-8">
+    <div class="text-center mb-10">
+      <h2 class="text-2xl font-bold text-white mb-2">Statistik Sesi</h2>
+      <div class="w-24 h-0.5 bg-white mx-auto rounded-full mt-2 mb-4"></div>
+      <p class="text-gray-400 text-sm">Ringkasan performa deteksi selama kamera aktif.</p>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-[#212121] border border-[#2E2E2E] hover:border-[#383838] transition-colors p-6 relative overflow-hidden rounded-xl group">
+        <div class="relative z-10">
+          <div id="statFrames" class="text-2xl font-semibold text-white mb-1">0</div>
+          <div class="text-xs text-gray-400 uppercase">Total Frame</div>
+        </div>
+        <i class="fa-solid fa-film absolute -bottom-2 -right-2 text-6xl text-[#1a1a1a] opacity-50 group-hover:scale-110 group-hover:text-[#2a2a2a] transition-transform duration-500"></i>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] hover:border-[#383838] transition-colors p-6 relative overflow-hidden rounded-xl group">
+        <div class="relative z-10">
+          <div id="statMaxHands" class="text-2xl font-semibold text-white mb-1">0</div>
+          <div class="text-xs text-gray-400 uppercase">Tangan Maksimum</div>
+        </div>
+        <i class="fa-solid fa-hand absolute -bottom-2 -right-2 text-6xl text-[#1a1a1a] opacity-50 group-hover:scale-110 group-hover:text-[#2a2a2a] transition-transform duration-500"></i>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] hover:border-[#383838] transition-colors p-6 relative overflow-hidden rounded-xl group">
+        <div class="relative z-10">
+          <div id="statUptime" class="text-2xl font-semibold text-white mb-1">00:00</div>
+          <div class="text-xs text-gray-400 uppercase">Durasi Aktif</div>
+        </div>
+        <i class="fa-solid fa-clock absolute -bottom-2 -right-2 text-6xl text-[#1a1a1a] opacity-50 group-hover:scale-110 group-hover:text-[#2a2a2a] transition-transform duration-500"></i>
+      </div>
+      <div class="bg-[#212121] border border-[#2E2E2E] hover:border-[#383838] transition-colors p-6 relative overflow-hidden rounded-xl group">
+        <div class="relative z-10">
+          <div id="statLandmarks" class="text-2xl font-semibold text-white mb-1">21</div>
+          <div class="text-xs text-gray-400 uppercase">Titik per Tangan</div>
+        </div>
+        <i class="fa-solid fa-braille absolute -bottom-2 -right-2 text-6xl text-[#1a1a1a] opacity-50 group-hover:scale-110 group-hover:text-[#2a2a2a] transition-transform duration-500"></i>
+      </div>
+    </div>
+  </section>
+
+  <section id="landmarks" class="py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-6">Cara Kerja</h2>
+        <p class="text-gray-400 mb-8 leading-relaxed">Setiap frame dari kamera dianalisis untuk menemukan posisi kedua tangan. Sistem membentuk segitiga dari ujung jari satu tangan menuju titik jepit tangan lainnya, lalu mengisinya dengan gambar kamera yang diwarnai ulang secara dinamis sehingga bentuknya mengikuti gerakan tangan secara langsung.</p>
+        <div class="grid grid-cols-1 gap-6">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">1</span></div>
+            <div><h4 class="font-bold text-white">Lacak Kedua Tangan</h4><p class="text-sm text-gray-500">Posisi ujung jari kedua tangan dihitung setiap frame.</p></div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">2</span></div>
+            <div><h4 class="font-bold text-white">Bentuk Segitiga</h4><p class="text-sm text-gray-500">Tangan yang jarinya terbuka lebar menjadi sisi lebar, tangan yang menjepit menjadi ujung runcing.</p></div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">3</span></div>
+            <div><h4 class="font-bold text-white">Warnai Ulang</h4><p class="text-sm text-gray-500">Area dalam segitiga diisi ulang dengan gambar kamera yang diberi efek warna bergerak.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="w-full">
+        <div class="rounded-xl overflow-hidden border border-[#2E2E2E]">
+          <div class="flex items-center justify-between bg-[#111] px-6 py-4 border-b border-[#2E2E2E]">
+            <div class="flex items-center space-x-4 flex-1 min-w-0">
+              <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+              </div>
+              <div class="h-4 w-px bg-gray-700"></div>
+              <span class="text-gray-300 text-sm font-medium font-mono">tracker.js</span>
+            </div>
+          </div>
+          <div class="bg-[#1a1a1a] min-h-64 relative overflow-hidden">
+            <div class="p-4">
+              <div class="overflow-x-auto">
+<pre class="font-mono text-sm text-gray-300 whitespace-pre"><span class="text-purple-400">const</span> base1 = tip(handA, <span class="text-yellow-300">4</span>);
+<span class="text-purple-400">const</span> base2 = tip(handA, <span class="text-yellow-300">20</span>);
+<span class="text-purple-400">const</span> apex  = pinchPoint(handB);
+
+ctx.clip(triangle(base1, base2, apex));
+ctx.filter = <span class="text-green-400">`hue-rotate(${hue}deg) saturate(4)`</span>;
+ctx.drawImage(videoFrame, <span class="text-yellow-300">0</span>, <span class="text-yellow-300">0</span>);</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="border-t border-[#2E2E2E] w-full">
+  <div class="max-w-5xl mx-auto px-8 md:px-16 py-8 text-center text-sm text-gray-500">Nexray Vision. Berjalan sepenuhnya di browser Anda.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+const videoEl = document.getElementById('inputVideo');
+const canvasEl = document.getElementById('outputCanvas');
+const ctx = canvasEl.getContext('2d');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const handCountEl = document.getElementById('handCount');
+const fpsValueEl = document.getElementById('fpsValue');
+const gestureValueEl = document.getElementById('gestureValue');
+const handSideEl = document.getElementById('handSide');
+const effectValueEl = document.getElementById('effectValue');
+const statFramesEl = document.getElementById('statFrames');
+const statMaxHandsEl = document.getElementById('statMaxHands');
+const statUptimeEl = document.getElementById('statUptime');
+
+let camera = null;
+let frameCount = 0;
+let maxHandsSeen = 0;
+let lastFrameTime = performance.now();
+let fps = 0;
+let startTime = null;
+let uptimeTimer = null;
+
+const hands = new Hands({
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+hands.setOptions({
+  maxNumHands: 2,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.6,
+  minTrackingConfidence: 0.6
+});
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function detectGesture(landmarks) {
+  const wrist = landmarks[0];
+  const tips = [4, 8, 12, 16, 20];
+  const pip = [3, 6, 10, 14, 18];
+  let extended = 0;
+  for (let i = 1; i < tips.length; i++) {
+    if (distance(landmarks[tips[i]], wrist) > distance(landmarks[pip[i]], wrist)) {
+      extended++;
+    }
+  }
+  if (extended >= 4) return 'Open Palm';
+  if (extended === 0) return 'Fist';
+  if (extended === 1) return 'Pointing';
+  if (extended === 2) return 'Peace';
+  return 'Partial';
+}
+
+function formatUptime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+  const s = (totalSec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function boundingBoxOfPoints(points) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+function fingerSpread(landmarks, width, height) {
+  const a = { x: landmarks[4].x * width, y: landmarks[4].y * height };
+  const b = { x: landmarks[20].x * width, y: landmarks[20].y * height };
+  return distance(a, b);
+}
+
+function drawHandBeamEffect(context, image, p1, p2, p3, time, width, height) {
+  context.save();
+  context.beginPath();
+  context.moveTo(p1.x, p1.y);
+  context.lineTo(p2.x, p2.y);
+  context.lineTo(p3.x, p3.y);
+  context.closePath();
+  context.clip();
+
+  const bbox = boundingBoxOfPoints([p1, p2, p3]);
+  const bands = 26;
+  const bandHeight = Math.max(bbox.h / bands, 1);
+
+  for (let i = 0; i < bands; i++) {
+    const bandY = bbox.y + i * bandHeight;
+    context.save();
+    context.beginPath();
+    context.rect(bbox.x, bandY, bbox.w, bandHeight + 1);
+    context.clip();
+    const hue = (time / 12 + i * 22) % 360;
+    context.filter = `saturate(4.5) contrast(1.6) brightness(1.2) hue-rotate(${hue}deg)`;
+    context.drawImage(image, 0, 0, width, height);
+    context.restore();
+  }
+
+  context.filter = 'none';
+  context.restore();
+
+  context.save();
+  context.beginPath();
+  context.moveTo(p1.x, p1.y);
+  context.lineTo(p2.x, p2.y);
+  context.lineTo(p3.x, p3.y);
+  context.closePath();
+  context.lineWidth = 2;
+  context.strokeStyle = 'rgba(255,255,255,0.55)';
+  context.stroke();
+  context.restore();
+}
+
+hands.onResults((results) => {
+  frameCount++;
+  const now = performance.now();
+  const delta = now - lastFrameTime;
+  lastFrameTime = now;
+  fps = Math.round(1000 / delta);
+
+  canvasEl.width = results.image.width;
+  canvasEl.height = results.image.height;
+  ctx.save();
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+  const handList = results.multiHandLandmarks || [];
+  const handedness = results.multiHandedness || [];
+
+  let joined = false;
+  if (handList.length === 2) {
+    const spreadA = fingerSpread(handList[0], canvasEl.width, canvasEl.height);
+    const spreadB = fingerSpread(handList[1], canvasEl.width, canvasEl.height);
+    const baseHand = spreadA >= spreadB ? handList[0] : handList[1];
+    const apexHand = spreadA >= spreadB ? handList[1] : handList[0];
+
+    const p1 = { x: baseHand[4].x * canvasEl.width, y: baseHand[4].y * canvasEl.height };
+    const p2 = { x: baseHand[20].x * canvasEl.width, y: baseHand[20].y * canvasEl.height };
+    const p3 = {
+      x: ((apexHand[4].x + apexHand[8].x) / 2) * canvasEl.width,
+      y: ((apexHand[4].y + apexHand[8].y) / 2) * canvasEl.height
+    };
+
+    drawHandBeamEffect(ctx, results.image, p1, p2, p3, now, canvasEl.width, canvasEl.height);
+    joined = true;
+  }
+
+  ctx.restore();
+
+  effectValueEl.textContent = joined ? 'Aktif' : 'Menunggu';
+  effectValueEl.classList.toggle('text-white', joined);
+  effectValueEl.classList.toggle('text-gray-500', !joined);
+
+  handCountEl.textContent = handList.length;
+  fpsValueEl.textContent = fps > 0 ? fps : 0;
+  statFramesEl.textContent = frameCount;
+
+  if (handList.length > maxHandsSeen) {
+    maxHandsSeen = handList.length;
+    statMaxHandsEl.textContent = maxHandsSeen;
+  }
+
+  if (handList.length > 0) {
+    gestureValueEl.textContent = detectGesture(handList[0]);
+    const labels = handedness.map(h => h.label).join(' & ');
+    handSideEl.textContent = labels || '-';
+  } else {
+    gestureValueEl.textContent = '-';
+    handSideEl.textContent = '-';
+  }
+});
+
+async function startTracking() {
+  startBtn.disabled = true;
+  startBtn.classList.add('opacity-50');
+  statusText.textContent = 'Starting';
+
+  camera = new Camera(videoEl, {
+    onFrame: async () => {
+      await hands.send({ image: videoEl });
+    },
+    width: 640,
+    height: 480
+  });
+
+  await camera.start();
+
+  statusDot.classList.add('live');
+  statusText.textContent = 'Live';
+  startBtn.classList.add('opacity-50');
+  stopBtn.disabled = false;
+  stopBtn.classList.remove('opacity-50');
+
+  startTime = performance.now();
+  uptimeTimer = setInterval(() => {
+    statUptimeEl.textContent = formatUptime(performance.now() - startTime);
+  }, 1000);
+}
+
+function stopTracking() {
+  if (camera) {
+    camera.stop();
+    camera = null;
+  }
+  const stream = videoEl.srcObject;
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    videoEl.srcObject = null;
+  }
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+  statusDot.classList.remove('live');
+  statusText.textContent = 'Idle';
+  startBtn.disabled = false;
+  startBtn.classList.remove('opacity-50');
+  stopBtn.disabled = true;
+  stopBtn.classList.add('opacity-50');
+
+  handCountEl.textContent = '0';
+  fpsValueEl.textContent = '0';
+  gestureValueEl.textContent = '-';
+  handSideEl.textContent = '-';
+  effectValueEl.textContent = 'Menunggu';
+  effectValueEl.classList.remove('text-white');
+  effectValueEl.classList.add('text-gray-500');
+
+  clearInterval(uptimeTimer);
+}
+
+startBtn.addEventListener('click', startTracking);
+stopBtn.addEventListener('click', stopTracking);
+</script>
+</body>
+</html>
