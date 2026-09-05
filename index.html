@@ -52,6 +52,7 @@ body::before {
   top: 0; left: 0;
   width: 100%; height: 100%;
   object-fit: cover;
+  transform: scaleX(-1);
 }
 .pulse-dot {
   width: 8px; height: 8px;
@@ -277,8 +278,8 @@ const hands = new Hands({
 hands.setOptions({
   maxNumHands: 2,
   modelComplexity: 1,
-  minDetectionConfidence: 0.6,
-  minTrackingConfidence: 0.6
+  minDetectionConfidence: 0.4,
+  minTrackingConfidence: 0.4
 });
 
 function distance(a, b) {
@@ -326,6 +327,12 @@ function fingerSpread(landmarks, width, height) {
   return distance(a, b);
 }
 
+const supportsCanvasFilter = (() => {
+  const testCanvas = document.createElement('canvas').getContext('2d');
+  testCanvas.filter = 'blur(1px)';
+  return testCanvas.filter === 'blur(1px)';
+})();
+
 function drawHandBeamEffect(context, image, p1, p2, p3, time, width, height) {
   context.save();
   context.beginPath();
@@ -346,8 +353,16 @@ function drawHandBeamEffect(context, image, p1, p2, p3, time, width, height) {
     context.rect(bbox.x, bandY, bbox.w, bandHeight + 1);
     context.clip();
     const hue = (time / 12 + i * 22) % 360;
-    context.filter = `saturate(4.5) contrast(1.6) brightness(1.2) hue-rotate(${hue}deg)`;
-    context.drawImage(image, 0, 0, width, height);
+    if (supportsCanvasFilter) {
+      context.filter = `saturate(4.5) contrast(1.6) brightness(1.2) hue-rotate(${hue}deg)`;
+      context.drawImage(image, 0, 0, width, height);
+    } else {
+      context.drawImage(image, 0, 0, width, height);
+      context.globalCompositeOperation = 'hue';
+      context.fillStyle = `hsl(${hue}, 100%, 50%)`;
+      context.fillRect(bbox.x, bandY, bbox.w, bandHeight + 1);
+      context.globalCompositeOperation = 'source-over';
+    }
     context.restore();
   }
 
@@ -383,20 +398,24 @@ hands.onResults((results) => {
 
   let joined = false;
   if (handList.length === 2) {
-    const spreadA = fingerSpread(handList[0], canvasEl.width, canvasEl.height);
-    const spreadB = fingerSpread(handList[1], canvasEl.width, canvasEl.height);
-    const baseHand = spreadA >= spreadB ? handList[0] : handList[1];
-    const apexHand = spreadA >= spreadB ? handList[1] : handList[0];
+    try {
+      const spreadA = fingerSpread(handList[0], canvasEl.width, canvasEl.height);
+      const spreadB = fingerSpread(handList[1], canvasEl.width, canvasEl.height);
+      const baseHand = spreadA >= spreadB ? handList[0] : handList[1];
+      const apexHand = spreadA >= spreadB ? handList[1] : handList[0];
 
-    const p1 = { x: baseHand[4].x * canvasEl.width, y: baseHand[4].y * canvasEl.height };
-    const p2 = { x: baseHand[20].x * canvasEl.width, y: baseHand[20].y * canvasEl.height };
-    const p3 = {
-      x: ((apexHand[4].x + apexHand[8].x) / 2) * canvasEl.width,
-      y: ((apexHand[4].y + apexHand[8].y) / 2) * canvasEl.height
-    };
+      const p1 = { x: baseHand[4].x * canvasEl.width, y: baseHand[4].y * canvasEl.height };
+      const p2 = { x: baseHand[20].x * canvasEl.width, y: baseHand[20].y * canvasEl.height };
+      const p3 = {
+        x: ((apexHand[4].x + apexHand[8].x) / 2) * canvasEl.width,
+        y: ((apexHand[4].y + apexHand[8].y) / 2) * canvasEl.height
+      };
 
-    drawHandBeamEffect(ctx, results.image, p1, p2, p3, now, canvasEl.width, canvasEl.height);
-    joined = true;
+      drawHandBeamEffect(ctx, results.image, p1, p2, p3, now, canvasEl.width, canvasEl.height);
+      joined = true;
+    } catch (err) {
+      joined = false;
+    }
   }
 
   ctx.restore();
