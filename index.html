@@ -142,7 +142,7 @@ body::before {
         <div id="handSide" class="text-2xl font-semibold text-white">-</div>
       </div>
       <div class="bg-[#212121] border border-[#2E2E2E] p-6 rounded-xl">
-        <div class="text-xs text-gray-400 uppercase mb-1">Efek Segitiga</div>
+        <div class="text-xs text-gray-400 uppercase mb-1">Efek Jari</div>
         <div id="effectValue" class="text-2xl font-semibold text-gray-500">Menunggu</div>
       </div>
     </div>
@@ -190,19 +190,19 @@ body::before {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div>
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-6">Cara Kerja</h2>
-        <p class="text-gray-400 mb-8 leading-relaxed">Setiap frame dari kamera dianalisis untuk menemukan posisi kedua tangan. Sistem membentuk segitiga dari ujung jari satu tangan menuju titik jepit tangan lainnya, lalu mengisinya dengan gambar kamera yang diwarnai ulang secara dinamis sehingga bentuknya mengikuti gerakan tangan secara langsung.</p>
+        <p class="text-gray-400 mb-8 leading-relaxed">Setiap frame dari kamera dianalisis untuk menemukan posisi kedua tangan. Sistem hanya mengikuti empat titik jari yaitu ujung jempol dan ujung telunjuk pada masing-masing tangan, lalu menyambungkan keempatnya menjadi satu bentuk yang diisi gambar kamera berwarna dinamis sehingga bentuknya mengikuti gerakan jari secara langsung.</p>
         <div class="grid grid-cols-1 gap-6">
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">1</span></div>
-            <div><h4 class="font-bold text-white">Lacak Kedua Tangan</h4><p class="text-sm text-gray-500">Posisi ujung jari kedua tangan dihitung setiap frame.</p></div>
+            <div><h4 class="font-bold text-white">Ambil Empat Titik</h4><p class="text-sm text-gray-500">Ujung jempol dan ujung telunjuk dari tangan kiri dan kanan dihitung setiap frame.</p></div>
           </div>
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">2</span></div>
-            <div><h4 class="font-bold text-white">Bentuk Segitiga</h4><p class="text-sm text-gray-500">Tangan yang jarinya terbuka lebar menjadi sisi lebar, tangan yang menjepit menjadi ujung runcing.</p></div>
+            <div><h4 class="font-bold text-white">Sambungkan Jadi Bentuk</h4><p class="text-sm text-gray-500">Jempol dan telunjuk tangan kiri disambung ke telunjuk dan jempol tangan kanan membentuk satu bidang.</p></div>
           </div>
           <div class="flex items-start gap-4">
             <div class="w-8 h-8 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0"><span class="font-mono text-sm">3</span></div>
-            <div><h4 class="font-bold text-white">Warnai Ulang</h4><p class="text-sm text-gray-500">Area dalam segitiga diisi ulang dengan gambar kamera yang diberi efek warna bergerak.</p></div>
+            <div><h4 class="font-bold text-white">Warnai Ulang</h4><p class="text-sm text-gray-500">Area dalam bidang tersebut diisi ulang dengan gambar kamera yang diberi efek warna bergerak.</p></div>
           </div>
         </div>
       </div>
@@ -222,11 +222,12 @@ body::before {
           <div class="bg-[#1a1a1a] min-h-64 relative overflow-hidden">
             <div class="p-4">
               <div class="overflow-x-auto">
-<pre class="font-mono text-sm text-gray-300 whitespace-pre"><span class="text-purple-400">const</span> base1 = tip(handA, <span class="text-yellow-300">4</span>);
-<span class="text-purple-400">const</span> base2 = tip(handA, <span class="text-yellow-300">20</span>);
-<span class="text-purple-400">const</span> apex  = pinchPoint(handB);
+<pre class="font-mono text-sm text-gray-300 whitespace-pre"><span class="text-purple-400">const</span> thumbA = tip(handA, <span class="text-yellow-300">4</span>);
+<span class="text-purple-400">const</span> indexA = tip(handA, <span class="text-yellow-300">8</span>);
+<span class="text-purple-400">const</span> indexB = tip(handB, <span class="text-yellow-300">8</span>);
+<span class="text-purple-400">const</span> thumbB = tip(handB, <span class="text-yellow-300">4</span>);
 
-ctx.clip(triangle(base1, base2, apex));
+ctx.clip(quad(thumbA, indexA, indexB, thumbB));
 ctx.filter = <span class="text-green-400">`hue-rotate(${hue}deg) saturate(4)`</span>;
 ctx.drawImage(videoFrame, <span class="text-yellow-300">0</span>, <span class="text-yellow-300">0</span>);</pre>
               </div>
@@ -277,7 +278,7 @@ const hands = new Hands({
 
 hands.setOptions({
   maxNumHands: 2,
-  modelComplexity: 1,
+  modelComplexity: 0,
   minDetectionConfidence: 0.4,
   minTrackingConfidence: 0.4
 });
@@ -321,28 +322,23 @@ function boundingBoxOfPoints(points) {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-function fingerSpread(landmarks, width, height) {
-  const a = { x: landmarks[4].x * width, y: landmarks[4].y * height };
-  const b = { x: landmarks[20].x * width, y: landmarks[20].y * height };
-  return distance(a, b);
-}
-
 const supportsCanvasFilter = (() => {
   const testCanvas = document.createElement('canvas').getContext('2d');
   testCanvas.filter = 'blur(1px)';
   return testCanvas.filter === 'blur(1px)';
 })();
 
-function drawHandBeamEffect(context, image, p1, p2, p3, time, width, height) {
+function drawHandBeamEffect(context, image, points, time, width, height) {
   context.save();
   context.beginPath();
-  context.moveTo(p1.x, p1.y);
-  context.lineTo(p2.x, p2.y);
-  context.lineTo(p3.x, p3.y);
+  context.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    context.lineTo(points[i].x, points[i].y);
+  }
   context.closePath();
   context.clip();
 
-  const bbox = boundingBoxOfPoints([p1, p2, p3]);
+  const bbox = boundingBoxOfPoints(points);
   const bands = 26;
   const bandHeight = Math.max(bbox.h / bands, 1);
 
@@ -371,9 +367,10 @@ function drawHandBeamEffect(context, image, p1, p2, p3, time, width, height) {
 
   context.save();
   context.beginPath();
-  context.moveTo(p1.x, p1.y);
-  context.lineTo(p2.x, p2.y);
-  context.lineTo(p3.x, p3.y);
+  context.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    context.lineTo(points[i].x, points[i].y);
+  }
   context.closePath();
   context.lineWidth = 2;
   context.strokeStyle = 'rgba(255,255,255,0.55)';
@@ -399,19 +396,22 @@ hands.onResults((results) => {
   let joined = false;
   if (handList.length === 2) {
     try {
-      const spreadA = fingerSpread(handList[0], canvasEl.width, canvasEl.height);
-      const spreadB = fingerSpread(handList[1], canvasEl.width, canvasEl.height);
-      const baseHand = spreadA >= spreadB ? handList[0] : handList[1];
-      const apexHand = spreadA >= spreadB ? handList[1] : handList[0];
+      let handA = handList[0];
+      let handB = handList[1];
+      if (handA[0].x > handB[0].x) {
+        const tmp = handA;
+        handA = handB;
+        handB = tmp;
+      }
 
-      const p1 = { x: baseHand[4].x * canvasEl.width, y: baseHand[4].y * canvasEl.height };
-      const p2 = { x: baseHand[20].x * canvasEl.width, y: baseHand[20].y * canvasEl.height };
-      const p3 = {
-        x: ((apexHand[4].x + apexHand[8].x) / 2) * canvasEl.width,
-        y: ((apexHand[4].y + apexHand[8].y) / 2) * canvasEl.height
-      };
+      const thumbA = { x: handA[4].x * canvasEl.width, y: handA[4].y * canvasEl.height };
+      const indexA = { x: handA[8].x * canvasEl.width, y: handA[8].y * canvasEl.height };
+      const indexB = { x: handB[8].x * canvasEl.width, y: handB[8].y * canvasEl.height };
+      const thumbB = { x: handB[4].x * canvasEl.width, y: handB[4].y * canvasEl.height };
 
-      drawHandBeamEffect(ctx, results.image, p1, p2, p3, now, canvasEl.width, canvasEl.height);
+      const points = [thumbA, indexA, indexB, thumbB];
+
+      drawHandBeamEffect(ctx, results.image, points, now, canvasEl.width, canvasEl.height);
       joined = true;
     } catch (err) {
       joined = false;
