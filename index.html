@@ -274,6 +274,9 @@ let lastFrameTime = performance.now();
 let fps = 0;
 let startTime = null;
 let uptimeTimer = null;
+let lastTwoHands = null;
+let lastTwoHandsTime = 0;
+const HAND_MEMORY_MS = 350;
 
 const hands = new Hands({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -383,21 +386,6 @@ function drawLiquidGlassQuad(context, image, points, time, width, height, hue) {
   context.globalCompositeOperation = 'source-over';
 
   context.restore();
-
-  context.save();
-  context.beginPath();
-  context.moveTo(points[0].x, points[0].y);
-  context.lineTo(points[1].x, points[1].y);
-  context.lineTo(points[2].x, points[2].y);
-  context.lineTo(points[3].x, points[3].y);
-  context.closePath();
-  context.lineWidth = 2;
-  context.strokeStyle = `hsla(${hue}, 95%, 80%, 0.9)`;
-  context.shadowColor = `hsla(${hue}, 95%, 70%, 0.8)`;
-  context.shadowBlur = 12;
-  context.stroke();
-  context.shadowBlur = 0;
-  context.restore();
 }
 
 function drawPosterDitherQuad(context, image, points, time, width, height, hue) {
@@ -430,21 +418,6 @@ function drawPosterDitherQuad(context, image, points, time, width, height, hue) 
   context.fillStyle = `hsla(${hue}, 100%, 70%, ${0.06 + flash * 0.05})`;
   context.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
 
-  context.restore();
-
-  context.save();
-  context.beginPath();
-  context.moveTo(points[0].x, points[0].y);
-  context.lineTo(points[1].x, points[1].y);
-  context.lineTo(points[2].x, points[2].y);
-  context.lineTo(points[3].x, points[3].y);
-  context.closePath();
-  context.lineWidth = 5;
-  context.lineCap = 'round';
-  context.setLineDash([1, 6]);
-  context.strokeStyle = 'rgba(255,255,255,0.9)';
-  context.stroke();
-  context.setLineDash([]);
   context.restore();
 }
 
@@ -502,16 +475,26 @@ hands.onResults((results) => {
   const handedness = results.multiHandedness || [];
 
   let joined = false;
-  if (handList.length === 2) {
-    try {
-      let handA = handList[0];
-      let handB = handList[1];
-      if (handA[0].x > handB[0].x) {
-        const tmp = handA;
-        handA = handB;
-        handB = tmp;
-      }
+  let handA = null;
+  let handB = null;
 
+  if (handList.length === 2) {
+    handA = handList[0];
+    handB = handList[1];
+    if (handA[0].x > handB[0].x) {
+      const tmp = handA;
+      handA = handB;
+      handB = tmp;
+    }
+    lastTwoHands = [handA, handB];
+    lastTwoHandsTime = now;
+  } else if (lastTwoHands && (now - lastTwoHandsTime) < HAND_MEMORY_MS) {
+    handA = lastTwoHands[0];
+    handB = lastTwoHands[1];
+  }
+
+  if (handA && handB) {
+    try {
       const extA = extendedFingerTips(handA, canvasEl.width, canvasEl.height);
       const extB = extendedFingerTips(handB, canvasEl.width, canvasEl.height);
       const common = extA.filter(idx => extB.includes(idx));
@@ -608,6 +591,8 @@ function stopTracking() {
     videoEl.srcObject = null;
   }
   ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  lastTwoHands = null;
+  lastTwoHandsTime = 0;
 
   statusDot.classList.remove('live');
   statusText.textContent = 'Idle';
